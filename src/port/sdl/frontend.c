@@ -1328,6 +1328,14 @@ static int bios_set()
   return 0;
 }
 
+static char *bios_file_show()
+{
+  static char buf[16] = "\0";
+  strncpy(buf, Config.BiosSpec[0] == 0 ? Config.Bios : Config.BiosSpec, 9);
+  if (buf[8] == '.') buf[8] = 0;
+  return buf;
+}
+
 static char *SlowBoot_show()
 {
 	static char buf[16] = "\0";
@@ -1337,7 +1345,7 @@ static char *SlowBoot_show()
 
 static void SlowBoot_hint()
 {
-	port_printf(7 * 8, 10 * 8, "Skip BIOS logos at startup");
+	port_printf(7 * 8, 59, "Skip BIOS logos at startup");
 }
 
 static int SlowBoot_alter(u32 keys)
@@ -1374,7 +1382,7 @@ static char *RCntFix_show()
 
 static void RCntFix_hint()
 {
-  port_printf(2 * 8 - 4, 10 * 8, "Parasite Eve 2, Vandal Hearts 1/2 Fix");
+  port_printf(2 * 8 - 4, 59, "Parasite Eve 2, Vandal Hearts 1/2 Fix");
 }
 
 static int VSyncWA_alter(u32 keys)
@@ -1393,7 +1401,7 @@ static int VSyncWA_alter(u32 keys)
 
 static void VSyncWA_hint()
 {
-  port_printf(6 * 8, 10 * 8, "InuYasha Sengoku Battle Fix");
+  port_printf(6 * 8, 59, "InuYasha Sengoku Battle Fix");
 }
 
 static char *VSyncWA_show()
@@ -1419,7 +1427,7 @@ static int Analog1_alter(u32 keys)
 
 static void Analog1_hint()
 {
-  port_printf(6 * 8, 10 * 8, "Analog Stick -> Arrow Keys");
+  port_printf(6 * 8, 59, "Analog Stick -> Arrow Keys");
 }
 
 static char *Analog1_show()
@@ -1447,7 +1455,7 @@ static int Analog_Mode_alter(u32 keys)
 
 static void Analog_Mode_hint()
 {
-  port_printf(6 * 8, 10 * 8, "Analog Mode");
+  port_printf(6 * 8, 59, "Analog Mode");
 }
 
 static char *Analog_Mode_show()
@@ -1468,6 +1476,54 @@ static char *Analog_Mode_show()
   }
   Set_Controller_Mode();
   
+  return buf;
+}
+
+static int McdSlot1_alter(u32 keys)
+{
+  int slot = Config.McdSlot1;
+  if (keys & KEY_RIGHT)
+  {
+    if (++slot > 15) slot = 1;
+  }
+  else
+  if (keys & KEY_LEFT)
+  {
+    if (--slot < 1) slot = 15;
+  }
+  Config.McdSlot1 = slot;
+  update_mcd_fname(1);
+  return 0;
+}
+
+static char *McdSlot1_show()
+{
+  static char buf[16] = "\0";
+  sprintf(buf, "mcd%03d", (int)Config.McdSlot1);
+  return buf;
+}
+
+static int McdSlot2_alter(u32 keys)
+{
+  int slot = Config.McdSlot2;
+  if (keys & KEY_RIGHT)
+  {
+    if (++slot > 16) slot = 1;
+  }
+  else
+  if (keys & KEY_LEFT)
+  {
+    if (--slot < 1) slot = 16;
+  }
+  Config.McdSlot2 = slot;
+  update_mcd_fname(1);
+  return 0;
+}
+
+static char *McdSlot2_show()
+{
+  static char buf[16] = "\0";
+  sprintf(buf, "mcd%03d", (int)Config.McdSlot2);
   return buf;
 }
 
@@ -1505,12 +1561,14 @@ static MENUITEM gui_SettingsItems[] =
   {(char *)"Cycle multiplier     ", NULL, &cycle_alter, &cycle_show, NULL},
 #endif
   {(char *)"HLE emulated BIOS    ", NULL, &bios_alter, &bios_show, NULL},
-  {(char *)"Set BIOS file        ", &bios_set, NULL, NULL, NULL},
+  {(char *)"Set BIOS file        ", &bios_set, NULL, &bios_file_show, NULL},
   {(char *)"Skip BIOS logos      ", NULL, &SlowBoot_alter, &SlowBoot_show, &SlowBoot_hint},
   {(char *)"RCntFix              ", NULL, &RCntFix_alter, &RCntFix_show, &RCntFix_hint},
   {(char *)"VSyncWA              ", NULL, &VSyncWA_alter, &VSyncWA_show, &VSyncWA_hint},
   {(char *)"Analog Arrow Keys    ", NULL, &Analog1_alter, &Analog1_show, &Analog1_hint},
   {(char *)"Analog Mode          ", NULL, &Analog_Mode_alter, &Analog_Mode_show, &Analog_Mode_hint},
+  {(char *)"Memory card Slot1    ", NULL, &McdSlot1_alter, &McdSlot1_show, NULL},
+  {(char *)"Memory card Slot2    ", NULL, &McdSlot2_alter, &McdSlot2_show, NULL},
   {(char *)"Restore defaults     ", &settings_defaults, NULL, NULL, NULL},
   {NULL, NULL, NULL, NULL, NULL},
   {(char *)"Back to main menu    ", &settings_back, NULL, NULL, NULL},
@@ -1518,7 +1576,7 @@ static MENUITEM gui_SettingsItems[] =
 };
 
 #define SET_SIZE ((sizeof(gui_SettingsItems) / sizeof(MENUITEM)) - 1)
-static MENU gui_SettingsMenu = { SET_SIZE, 0, 56, 112, (MENUITEM *)&gui_SettingsItems };
+static MENU gui_SettingsMenu = { SET_SIZE, 0, 56, 80, (MENUITEM *)&gui_SettingsItems };
 
 static int fps_alter(u32 keys)
 {
@@ -1745,11 +1803,144 @@ static char *clip_368_show()
 }
 #endif
 
+static int blit_512_alter(u32 keys)
+{
+  int mode = Config.Blit512Mode;
+  if (keys & KEY_RIGHT)
+  {
+    if (++mode > 3) mode = 0;
+  }
+  else if (keys & KEY_LEFT)
+  {
+    if (--mode < 0) mode = 3;
+  }
+  Config.Blit512Mode = mode;
+  gpu_unai_config_ext.pixel_skip = Config.Blit512Mode == 1 ? 1 : 0;
+  return 0;
+}
+
+static char *blit_512_show()
+{
+  const char* str[] = { "old1", "old2", "new1", "linear"};
+  int mode = Config.Blit512Mode;
+  if (mode < 0 || mode >= sizeof(str)/sizeof(str[0])) mode = 0;
+  return (char*)str[mode];
+}
+
+static void blit_512_hint()
+{
+  const char* str[] = { "pixel skip off", "pixel skip on", "new filter1", "linear filter"};
+  if (Config.Blit512Mode < sizeof(str)/sizeof(str[0]))
+  {
+    port_printf(6 * 8, 59, str[Config.Blit512Mode]);
+  }
+}
+
+static int blit_480_alter(u32 keys)
+{
+  int mode = Config.Blit480H;
+  if (keys & KEY_RIGHT)
+  {
+    if (++mode > 1) mode = 0;
+  }
+  else if (keys & KEY_LEFT)
+  {
+    if (--mode < 0) mode = 1;
+  }
+  Config.Blit480H = mode;
+  return 0;
+}
+
+static char *blit_480_show()
+{
+  const char* str[] = { "skip", "filter"};
+  int mode = Config.Blit480H;
+  if (mode < 0 || mode >= sizeof(str)/sizeof(str[0])) mode = 0;
+  return (char*)str[mode];
+}
+
+static void blit_480_hint()
+{
+  const char* str[] = { "fast, skip half lines", "slow, filter lines"};
+  if (Config.Blit480H < sizeof(str)/sizeof(str[0]))
+  {
+    port_printf(6 * 8, 59, str[Config.Blit480H]);
+  }
+}
+
+static int blit_256_alter(u32 keys)
+{
+  int mode = Config.Blit256W;
+  if (keys & KEY_RIGHT)
+  {
+    if (++mode > 1) mode = 0;
+  }
+  else if (keys & KEY_LEFT)
+  {
+    if (--mode < 0) mode = 1;
+  }
+  Config.Blit256W = mode;
+  return 0;
+}
+
+static char *blit_256_show()
+{
+  const char* str[] = { "old", "linear"};
+  int mode = Config.Blit256W;
+  if (mode < 0 || mode >= sizeof(str)/sizeof(str[0])) mode = 0;
+  return (char*)str[mode];
+}
+
+static void blit_256_hint()
+{
+  const char* str[] = { "nearest", "linear filter"};
+  if (Config.Blit256W < sizeof(str)/sizeof(str[0]))
+  {
+    port_printf(6 * 8, 59, str[Config.Blit256W]);
+  }
+}
+
+static int blit_368_alter(u32 keys)
+{
+  int mode = Config.Blit368W;
+  if (keys & KEY_RIGHT)
+  {
+    if (++mode > 2) mode = 0;
+  }
+  else if (keys & KEY_LEFT)
+  {
+    if (--mode < 0) mode = 2;
+  }
+  Config.Blit368W = mode;
+  return 0;
+}
+
+static char *blit_368_show()
+{
+  const char* str[] = { "old", "new", "linear"};
+  int mode = Config.Blit368W;
+  if (mode < 0 || mode >= sizeof(str)/sizeof(str[0])) mode = 0;
+  return (char*)str[mode];
+}
+
+static void blit_368_hint()
+{
+  const char* str[] = { "drop some pixels", "copy pixels & mix some", "linear filter"};
+  if (Config.Blit368W < sizeof(str)/sizeof(str[0]))
+  {
+    port_printf(6 * 8, 59, str[Config.Blit368W]);
+  }
+}
+
 static int gpu_settings_defaults()
 {
   Config.ShowFps = 0;
   Config.FrameLimit = 1;
   Config.FrameSkip = FRAMESKIP_OFF;
+  Config.Blit512Mode = 3;
+  Config.Blit480H = 1;
+  Config.Blit256W = 1;
+  Config.Blit368W = 1;
 
 #ifdef GPU_UNAI
 #ifndef USE_GPULIB
@@ -1783,6 +1974,10 @@ static MENUITEM gui_GPUSettingsItems[] =
   {(char *)"Blending             ", NULL, &blending_alter, &blending_show, NULL},
   {(char *)"Clip 368 -> 352      ", NULL, &clip_368_alter, &clip_368_show, NULL},
 #endif
+  {(char *)"Blit 256 width       ", NULL, &blit_256_alter, &blit_256_show, blit_256_hint},
+  {(char *)"Blit 368x240         ", NULL, &blit_368_alter, &blit_368_show, blit_368_hint},
+  {(char *)"Blit 512/640 width   ", NULL, &blit_512_alter, &blit_512_show, blit_512_hint},
+  {(char *)"Blit 480 height      ", NULL, &blit_480_alter, &blit_480_show, blit_480_hint},
   {(char *)"Restore defaults     ", &gpu_settings_defaults, NULL, NULL, NULL},
   {NULL, NULL, NULL, NULL, NULL},
   {(char *)"Back to main menu    ", &settings_back, NULL, NULL, NULL},
@@ -1790,7 +1985,7 @@ static MENUITEM gui_GPUSettingsItems[] =
 };
 
 #define SET_GPUSIZE ((sizeof(gui_GPUSettingsItems) / sizeof(MENUITEM)) - 1)
-static MENU gui_GPUSettingsMenu = { SET_GPUSIZE, 0, 56, 112, (MENUITEM *)&gui_GPUSettingsItems };
+static MENU gui_GPUSettingsMenu = { SET_GPUSIZE, 0, 56, 80, (MENUITEM *)&gui_GPUSettingsItems };
 
 static int xa_alter(u32 keys)
 {
@@ -2044,7 +2239,7 @@ static MENUITEM gui_SPUSettingsItems[] =
 };
 
 #define SET_SPUSIZE ((sizeof(gui_SPUSettingsItems) / sizeof(MENUITEM)) - 1)
-static MENU gui_SPUSettingsMenu = { SET_SPUSIZE, 0, 56, 112, (MENUITEM *)&gui_SPUSettingsItems };
+static MENU gui_SPUSettingsMenu = { SET_SPUSIZE, 0, 56, 80, (MENUITEM *)&gui_SPUSettingsItems };
 
 static int gui_LoadIso()
 {

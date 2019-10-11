@@ -121,8 +121,9 @@ enum {
 };
 
 typedef struct {
-	char Mcd1[MAXPATHLEN];
-	char Mcd2[MAXPATHLEN];
+	char McdPath1[MAXPATHLEN];
+	char McdPath2[MAXPATHLEN];
+	char BiosSpec[MAXPATHLEN];
 	char Bios[MAXPATHLEN];
 	char BiosDir[MAXPATHLEN];
 	char LastDir[MAXPATHLEN];
@@ -173,10 +174,17 @@ typedef struct {
 	boolean PerfmonDetailedStats;
 	// add new ...
 	boolean AnalogArrow;
-	u8 Analog_Mode;
+	u8      Analog_Mode;
+	u8      Blit512Mode;
+	u8      Blit480H;
+	u8      Blit256W;
+	u8      Blit368W;
+	u8      McdSlot1;
+	u8      McdSlot2;
 } PcsxConfig;
 
 extern PcsxConfig Config;
+extern void update_mcd_fname(int load_mcd);
 
 /////////////////////////////
 // Savestate file handling //

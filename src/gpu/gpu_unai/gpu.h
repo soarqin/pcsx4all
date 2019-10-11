@@ -25,7 +25,7 @@
 struct gpu_unai_config_t
 {
   uint8_t clip_368:1;
-  //uint8_t pixel_skip:1;     // If 1, allows skipping rendering pixels that
+  uint8_t pixel_skip:1;     // If 1, allows skipping rendering pixels that
   //  would not be visible when a high horizontal
   //  resolution PS1 video mode is set.
   //  Only applies to devices with low resolutions

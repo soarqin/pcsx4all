@@ -39,6 +39,7 @@
 #include <sys/mman.h>
 #ifdef SHMEM_MIRRORING
 #include <sys/shm.h>   // For Posix shared mem
+#include <sys/stat.h>
 #endif
 
 /* Map PSX RAM regions 0x0000_0000..0x007f_ffff and Expansion-ROM/HW-I/O

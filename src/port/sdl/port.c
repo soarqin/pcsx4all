@@ -81,6 +81,9 @@ void config_save();
 
 static void pcsx4all_exit(void)
 {
+	// Store config to file
+	config_save();
+
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
 
@@ -98,9 +101,6 @@ static void pcsx4all_exit(void)
 		ReleasePlugins();
 		psxShutdown();
 	}
-
-	// Store config to file
-	config_save();
 }
 
 static char homedir[PATH_MAX/2];
@@ -324,6 +324,16 @@ void config_load()
       sscanf(arg, "%d", &value);
       Config.SlowBoot = value;
     }
+    else if (!strcmp(line, "McdSlot1"))
+    {
+      sscanf(arg, "%d", &value);
+      Config.McdSlot1 = value;
+    }
+    else if (!strcmp(line, "McdSlot2"))
+    {
+      sscanf(arg, "%d", &value);
+      Config.McdSlot2 = value;
+    }
 #ifdef SPU_PCSXREARMED
     else if (!strcmp(line, "SpuUseInterpolation"))
     {
@@ -398,6 +408,26 @@ void config_load()
       cycle_multiplier = value;
     }
 #endif
+    else if (!strcmp(line, "Blit512Mode"))
+    {
+      sscanf(arg, "%d", &value);
+      Config.Blit512Mode = value;
+    }
+    else if (!strcmp(line, "Blit480H"))
+    {
+      sscanf(arg, "%d", &value);
+      Config.Blit480H = value;
+    }
+    else if (!strcmp(line, "Blit256W"))
+    {
+      sscanf(arg, "%d", &value);
+      Config.Blit256W = value;
+    }
+    else if (!strcmp(line, "Blit368W"))
+    {
+      sscanf(arg, "%d", &value);
+      Config.Blit368W = value;
+    }
 #ifdef GPU_UNAI
     else if (!strcmp(line, "clip_368"))
     {
@@ -431,6 +461,9 @@ void config_load()
     }
 #endif
   }
+#ifdef GPU_UNAI
+  gpu_unai_config_ext.pixel_skip = Config.Blit512Mode == 1 ? 1 : 0;
+#endif
 
   fclose(f);
 }
@@ -469,12 +502,20 @@ void config_save()
           "FrameSkip %d\n"
           "AnalogArrow %d\n"
           "Analog_Mode %d\n"
-          "SlowBoot %d\n",
+          "SlowBoot %d\n"
+          "Blit512Mode %d\n"
+          "Blit480H %d\n"
+          "Blit256W %d\n"
+          "Blit368W %d\n"
+          "McdSlot1 %d\n"
+          "McdSlot2 %d\n",
           CONFIG_VERSION, Config.Xa, Config.Mdec, Config.PsxAuto,
           Config.Cdda, Config.HLE, Config.RCntFix, Config.VSyncWA,
           Config.Cpu, Config.PsxType, Config.SpuIrq, Config.SyncAudio,
           Config.SpuUpdateFreq, Config.ForcedXAUpdates, Config.ShowFps, Config.FrameLimit,
-          Config.FrameSkip, Config.AnalogArrow, Config.Analog_Mode, Config.SlowBoot);
+          Config.FrameSkip, Config.AnalogArrow, Config.Analog_Mode, Config.SlowBoot,
+          Config.Blit512Mode, Config.Blit480H, Config.Blit256W, Config.Blit368W,
+          Config.McdSlot1, Config.McdSlot2);
 
 #ifdef SPU_PCSXREARMED
   fprintf(f, "SpuUseInterpolation %d\n", spu_config.iUseInterpolation);
@@ -517,6 +558,7 @@ void config_save()
     fprintf(f, "Bios %s\n", Config.Bios);
   }
 
+  fsync(fileno(f));
   fclose(f);
 }
 
@@ -791,14 +833,6 @@ void pad_update(void)
 #ifdef GCW_ZERO
 	if (Config.AnalogArrow == 1)
 	{
-		pad1_buttons |= (1 << DKEY_SELECT);
-		// SELECT+B for psx's SELECT
-		if (keys[SDLK_ESCAPE] && keys[SDLK_LALT])
-		{
-			pad1_buttons &= ~(1 << DKEY_SELECT);
-			pad1_buttons |= (1 << DKEY_CROSS);
-		}
-
 		if ((pad1_buttons & (1 << DKEY_UP)) && (analog1 & ANALOG_UP))
 		{
 			pad1_buttons &= ~(1 << DKEY_UP);
@@ -899,6 +933,38 @@ void video_clear(void)
   memset(screen->pixels, 0, screen->pitch*screen->h);
 }
 
+void update_mcd_fname(int load_mcd)
+{
+  sprintf(Config.McdPath1, "%s/mcd%03d.mcr", memcardsdir, (int)Config.McdSlot1);
+  sprintf(Config.McdPath2, "%s/mcd%03d.mcr", memcardsdir, (int)Config.McdSlot2);
+  if (load_mcd != 0)
+  {
+    LoadMcd(MCD1, Config.McdPath1); //Memcard 1
+    LoadMcd(MCD2, Config.McdPath2); //Memcard 2
+  }
+}
+
+// if [CdromId].bin is exsit, use the spec bios
+int check_spec_bios(void)
+{
+  FILE *f = NULL;
+  char bios[MAXPATHLEN];
+  Config.BiosSpec[0] = 0;
+  if (snprintf(bios, MAXPATHLEN, "%s/%s.bin", Config.BiosDir, CdromId) < MAXPATHLEN)
+  {
+    f = fopen(bios, "rb");
+    if (f != NULL)
+    {
+      fclose(f);
+      strcpy(Config.BiosSpec, CdromId);
+      strcat(Config.BiosSpec, ".bin");
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
 /* This is needed to override redirecting to stderr.txt and stdout.txt
 with mingw build. */
 #ifdef UNDEF_MAIN
@@ -940,11 +1006,13 @@ int main (int argc, char **argv)
   
 
   // PCSX
-  snprintf(Config.Mcd1, sizeof(Config.Mcd1), "%s/%s", memcardsdir, "mcd001.mcr");
-  snprintf(Config.Mcd2, sizeof(Config.Mcd2), "%s/%s", memcardsdir, "mcd002.mcr");
+  Config.McdSlot1 = 1;
+  Config.McdSlot2 = 2;
+  update_mcd_fname(0);
   strcpy(Config.PatchesDir, patchesdir);
   strcpy(Config.BiosDir, biosdir);
   strcpy(Config.Bios, "scph1001.bin");
+  Config.BiosSpec[0] = 0;
 
   Config.Xa=0; /* 0=XA enabled, 1=XA disabled */
   Config.Mdec=0; /* 0=Black&White Mdecs Only Disabled, 1=Black&White Mdecs Only Enabled */
@@ -980,6 +1048,10 @@ int main (int argc, char **argv)
   Config.FrameSkip = FRAMESKIP_OFF;
   Config.AnalogArrow = 0;
   Config.Analog_Mode = 0;
+  Config.Blit512Mode = 3; //0 ~ 3: old1 old2 new1 new2
+  Config.Blit480H = 1; //0:skip half lines, 1:filter lines
+  Config.Blit256W = 1; //0:old, 1:make alpha mixing
+  Config.Blit368W = 1; //0:old, 1:new1, 2:new2(linear)
 
   //zear - Added option to store the last visited directory.
   strncpy(Config.LastDir, homedir, MAXPATHLEN); /* Defaults to home directory. */
@@ -1288,6 +1360,7 @@ int main (int argc, char **argv)
     if (strcmp(argv[i],"-nopixelskip") == 0)
     {
       gpu_unai_config_ext.clip_368 = 0;
+      gpu_unai_config_ext.pixel_skip = 0;
     }
 
     // Settings specific to older, non-gpulib standalone gpu_unai:
@@ -1479,17 +1552,18 @@ int main (int argc, char **argv)
   // Initialize plugin_lib, gpulib
   pl_init();
 
-  psxReset();
-
   if (cdrfilename[0] != '\0')
   {
     if (CheckCdrom() == -1)
     {
+      psxReset();
       printf("Failed checking ISO image.\n");
       SetIsoFile(NULL);
     }
     else
     {
+      check_spec_bios();
+      psxReset();
       printf("Running ISO image: %s.\n", cdrfilename);
       if (LoadCdrom() == -1)
       {
@@ -1497,6 +1571,10 @@ int main (int argc, char **argv)
         SetIsoFile(NULL);
       }
     }
+  }
+  else
+  {
+    psxReset();
   }
 
   if (filename[0] != '\0')

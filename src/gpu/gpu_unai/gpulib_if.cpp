@@ -108,19 +108,18 @@ void renderer_finish(void)
 
 void renderer_notify_res_change(void)
 {
-  /*
-   if (PixelSkipEnabled()) {
-     // Set blit_mask for high horizontal resolutions. This allows skipping
-     //  rendering pixels that would never get displayed on low-resolution
-     //  platforms that use simple pixel-dropping scaler.
-
-     switch (gpu.screen.hres)
-     {
-       case 512: gpu_unai.blit_mask = 0xa4; break; // GPU_BlitWWSWWSWS
-       case 640: gpu_unai.blit_mask = 0xaa; break; // GPU_BlitWS
-       default:  gpu_unai.blit_mask = 0;    break;
-     }
-   } else */
+  if (PixelSkipEnabled()) {
+    // Set blit_mask for high horizontal resolutions. This allows skipping
+    //  rendering pixels that would never get displayed on low-resolution
+    //  platforms that use simple pixel-dropping scaler.
+    switch (gpu.screen.hres)
+    {
+      case 512: gpu_unai.blit_mask = 0xa4; break; // GPU_BlitWWSWWSWS
+      case 640: gpu_unai.blit_mask = 0xaa; break; // GPU_BlitWS
+      default:  gpu_unai.blit_mask = 0;    break;
+    }
+  }
+  else
   {
     gpu_unai.blit_mask = 0;
   }

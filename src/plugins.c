@@ -36,8 +36,9 @@ int LoadPlugins(void) {
 
 	ReleasePlugins();
 
-	LoadMcd(MCD1, Config.Mcd1); //Memcard 1
-	LoadMcd(MCD2, Config.Mcd2); //Memcard 2
+	update_mcd_fname(0); // McdSlot1 -> McdPath1, McdSlot2 -> McdPath2
+	LoadMcd(MCD1, Config.McdPath1); //Memcard 1
+	LoadMcd(MCD2, Config.McdPath2); //Memcard 2
 
 	ret = CDR_init();
 	if (ret < 0) { printf ("Error initializing CD-ROM plugin: %d\n", ret); return -1; }
