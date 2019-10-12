@@ -79,7 +79,7 @@ const char DualShockOnlyGames[16][10] =
 };
 
 /* Flightstick/Dual Analog games */
-const char DualAnalogGames[93][10] =
+const char DualAnalogGames[101][10] =
 {
 	/* Ace Combat 2 */
 	{"SLUS00404"},
@@ -87,6 +87,16 @@ const char DualAnalogGames[93][10] =
 	{"SCES00699"},
 	{"SCES00901"},
 	{"SCES00902"},
+
+    /* Ace Combat 3 */
+    {"SLUS00972"},
+    {"SCES02066"},
+    {"SCPS45397"},
+    {"SCPS45398"},
+    {"SLPS02020"},
+    {"SLPS02021"},
+    {"SLPS91214"},
+    {"SLPS91215"},
 	
 	/* Armored Trooper Votoms */
 	{"SLPS01330"},
