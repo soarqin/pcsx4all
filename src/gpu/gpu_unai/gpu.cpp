@@ -782,10 +782,8 @@ static void gpuVideoOutput(void)
 // Update frames-skip each second>>3 (8 times per second)
 #define GPU_FRAMESKIP_UPDATE 3
 
-static void GPU_frameskip (bool show)
+static void GPU_frameskip (bool show, u32 now)
 {
-  u32 now=get_ticks(); // current frame
-
   // Update frameskip
   if (gpu_unai.frameskip.skipCount==0) gpu_unai.frameskip.skipFrame=false; // frameskip off
   else if (gpu_unai.frameskip.skipCount==7)
@@ -838,20 +836,21 @@ void GPU_updateLace(void)
 {
   // Interlace bit toggle
   gpu_unai.GPU_GP1 ^= 0x80000000;
+  u32 tick = get_ticks();
 
   // Update display?
   if ((gpu_unai.fb_dirty) && (!gpu_unai.frameskip.wasSkip) && (!(gpu_unai.GPU_GP1&0x00800000)))
   {
     // Display updated
     gpuVideoOutput();
-    GPU_frameskip(true);
+    GPU_frameskip(true, tick);
 #ifdef ENABLE_GPU_LOG_SUPPORT
     fprintf(stdout,"GPU_updateLace(UPDATE)\n");
 #endif
   }
   else
   {
-    GPU_frameskip(false);
+    GPU_frameskip(false, tick);
 #ifdef ENABLE_GPU_LOG_SUPPORT
     fprintf(stdout,"GPU_updateLace(SKIP)\n");
 #endif

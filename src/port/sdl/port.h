@@ -47,6 +47,7 @@ static inline int fsync(int f)
 #define	CONFIG_VERSION	0
 
 unsigned get_ticks(void);
+unsigned get_curr_ticks(void);
 void wait_ticks(unsigned s);
 void pad_update(void);
 uint16_t pad_read(int num);

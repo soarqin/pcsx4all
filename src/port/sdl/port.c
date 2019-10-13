@@ -29,6 +29,7 @@ int id_shake;
 #include "plugin_lib.h"
 #include "perfmon.h"
 #include "cdrom_hacks.h"
+#include "cheat.h"
 
 /* PATH_MAX inclusion */
 #ifdef __MINGW32__
@@ -81,6 +82,12 @@ void config_save();
 
 static void pcsx4all_exit(void)
 {
+	// unload cheats
+	cheat_unload();
+
+	// Store config to file
+	config_save();
+
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
 
@@ -108,6 +115,7 @@ static char memcardsdir[PATH_MAX];
 static char biosdir[PATH_MAX];
 static char patchesdir[PATH_MAX];
 char sstatesdir[PATH_MAX];
+char cheatsdir[PATH_MAX];
 
 #ifdef __WIN32__
 	#define MKDIR(A) mkdir(A)
@@ -129,19 +137,19 @@ static void setup_paths()
 	 * This can speeds up startup if the folder already exists
 	*/
 
-	if(access( homedir, F_OK ) != -1) 
-	{
-		snprintf(sstatesdir, sizeof(sstatesdir), "%s/sstates", homedir);
-		snprintf(memcardsdir, sizeof(memcardsdir), "%s/memcards", homedir);
-		snprintf(biosdir, sizeof(biosdir), "%s/bios", homedir);
-		snprintf(patchesdir, sizeof(patchesdir), "%s/patches", homedir);
-	}
-	
+	if(access( homedir, F_OK ) < 0) return;
+
+	snprintf(sstatesdir, sizeof(sstatesdir), "%s/sstates", homedir);
+	snprintf(memcardsdir, sizeof(memcardsdir), "%s/memcards", homedir);
+	snprintf(biosdir, sizeof(biosdir), "%s/bios", homedir);
+	snprintf(patchesdir, sizeof(patchesdir), "%s/patches", homedir);
+	snprintf(cheatsdir, sizeof(cheatsdir), "%s/cheats", homedir);
 	MKDIR(homedir);
 	MKDIR(sstatesdir);
 	MKDIR(memcardsdir);
 	MKDIR(biosdir);
 	MKDIR(patchesdir);
+	MKDIR(cheatsdir);
 }
 
 void probe_lastdir()
@@ -1496,6 +1504,10 @@ int main (int argc, char **argv)
         printf("Failed loading ISO image.\n");
         SetIsoFile(NULL);
       }
+      else {
+        // load cheats
+        cheat_load();
+      }
     }
   }
 
@@ -1538,6 +1550,15 @@ unsigned get_ticks(void)
   return SDL_GetTicks();
 #else
   return ((((unsigned long long)clock())*1000000ULL)/((unsigned long long)CLOCKS_PER_SEC));
+#endif
+}
+
+unsigned get_curr_ticks(void)
+{
+#ifdef TIME_IN_MSEC
+  return SDL_GetTicks();
+#else
+  return ((((unsigned long long)clock())*1000ULL)/((unsigned long long)CLOCKS_PER_SEC));
 #endif
 }
 
